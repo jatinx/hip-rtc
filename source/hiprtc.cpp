@@ -86,6 +86,10 @@ hiprtcResult hiprtcCompileProgram(hiprtcProgram prog, int num_options,
     return HIPRTC_ERROR_INVALID_INPUT;
   }
 
+  if (p->state_ != hiprtc_program_state::Created) {
+    return HIPRTC_ERROR_INVALID_INPUT;
+  }
+
   /* Append user options */
   std::vector<std::string> opts;
   opts.reserve(num_options + 7);
@@ -140,6 +144,10 @@ hiprtcResult hiprtcGetCodeSize(hiprtcProgram prog, size_t *binary_size) {
   }
 
   auto p = reinterpret_cast<hiprtc_program *>(prog);
+  if (p->state_ != hiprtc_program_state::Compiled) {
+    return HIPRTC_ERROR_COMPILATION;
+  }
+
   *binary_size = p->object_.size();
 
   return HIPRTC_SUCCESS;
@@ -151,7 +159,61 @@ hiprtcResult hiprtcGetCode(hiprtcProgram prog, char *binary) {
   }
 
   auto p = reinterpret_cast<hiprtc_program *>(prog);
+  if (p->state_ != hiprtc_program_state::Compiled) {
+    return HIPRTC_ERROR_COMPILATION;
+  }
+
   std::memcpy((void *)binary, p->object_.data(), p->object_.size());
+
+  return HIPRTC_SUCCESS;
+}
+
+hiprtcResult hiprtcAddNameExpression(hiprtcProgram prog,
+                                     const char *name_expression) {
+  if (name_expression == nullptr) {
+    return HIPRTC_ERROR_NAME_EXPRESSION_NOT_VALID;
+  }
+
+  auto p = reinterpret_cast<hiprtc_program *>(prog);
+  if (p->state_ != hiprtc_program_state::Created) {
+    return HIPRTC_ERROR_INVALID_INPUT;
+  }
+
+  std::string name = name_expression;
+  p->lowered_names_[std::string(name_expression)] = std::string();
+
+  // Now add code that instantiates the template
+  std::string gcn_expr = "__amdgcn_name_expr_";
+  std::string size = std::to_string(p->lowered_names_.size());
+  const auto var1{"\n static __device__ const void* " + gcn_expr + size +
+                  "[]= {\"" + name + "\", (void*)&" + name + "};"};
+  const auto var2{"\n static auto __amdgcn_name_expr_stub_" + size + " = " +
+                  gcn_expr + size + ";\n"};
+  const auto code{var1 + var2};
+
+  p->source_ += code;
+
+  return HIPRTC_SUCCESS;
+}
+
+hiprtcResult hiprtcGetLoweredName(hiprtcProgram prog,
+                                  const char *name_expression,
+                                  const char **lowered_name) {
+  if (name_expression == nullptr || lowered_name == nullptr) {
+    return HIPRTC_ERROR_INVALID_INPUT;
+  }
+
+  auto p = reinterpret_cast<hiprtc_program *>(prog);
+  if (p->state_ != hiprtc_program_state::Compiled) {
+    return HIPRTC_ERROR_INVALID_INPUT;
+  }
+
+  std::string name(name_expression);
+  if (p->lowered_names_.find(name) == p->lowered_names_.end()) {
+    return HIPRTC_ERROR_INVALID_INPUT;
+  }
+
+  *lowered_name = p->lowered_names_[name].data();
 
   return HIPRTC_SUCCESS;
 }

@@ -59,15 +59,15 @@ typedef void *hiprtcProgram;
  * @param prog output program
  * @param src source code
  * @param name name to be used
- * @param numHeaders number of headers
+ * @param num_headers number of headers
  * @param headers header pointers
- * @param includeNames
+ * @param include_names
  * @return hiprtcResult
  */
 hiprtcResult hiprtcCreateProgram(hiprtcProgram *prog, const char *src,
-                                 const char *name, int numHeaders,
+                                 const char *name, int num_headers,
                                  const char **headers,
-                                 const char **includeNames);
+                                 const char **include_names);
 
 /**
  * @brief Destroy the hiprtcProgram
@@ -81,21 +81,21 @@ hiprtcResult hiprtcDestroyProgram(hiprtcProgram *prog);
  * @brief Compile the hiprtcProgram with options
  *
  * @param prog Input Program
- * @param numOptions Number of options
+ * @param num_opts Number of options
  * @param options Options
  * @return hiprtcResult
  */
-hiprtcResult hiprtcCompileProgram(hiprtcProgram prog, int numOptions,
+hiprtcResult hiprtcCompileProgram(hiprtcProgram prog, int num_opts,
                                   const char **options);
 
 /**
  * @brief Get program log size
  *
  * @param prog
- * @param logSizeRet
+ * @param log_size
  * @return hiprtcResult
  */
-hiprtcResult hiprtcGetProgramLogSize(hiprtcProgram prog, size_t *logSizeRet);
+hiprtcResult hiprtcGetProgramLogSize(hiprtcProgram prog, size_t *log_size);
 
 /**
  * @brief Get program log
@@ -110,19 +110,41 @@ hiprtcResult hiprtcGetProgramLog(hiprtcProgram prog, const char *dst);
  * @brief Get code size
  *
  * @param prog
- * @param binarySizeRet
+ * @param binary_size
  * @return hiprtcResult
  */
-hiprtcResult hiprtcGetCodeSize(hiprtcProgram prog, size_t *binarySizeRet);
+hiprtcResult hiprtcGetCodeSize(hiprtcProgram prog, size_t *binary_size);
 
 /**
  * @brief Get code to be loaded by hipModuleLoad
  *
  * @param prog
- * @param binaryMem
+ * @param binary
  * @return hiprtcResult
  */
-hiprtcResult hiprtcGetCode(hiprtcProgram prog, char *binaryMem);
+hiprtcResult hiprtcGetCode(hiprtcProgram prog, char *binary);
+
+/**
+ * @brief add name expression to be tracked
+ *
+ * @param prog
+ * @param name_expression
+ * @return hiprtcResult
+ */
+hiprtcResult hiprtcAddNameExpression(hiprtcProgram prog,
+                                     const char *name_expression);
+
+/**
+ * @brief Get lowered name of expression
+ * 
+ * @param prog 
+ * @param name_expression 
+ * @param lowered_name 
+ * @return hiprtcResult 
+ */
+hiprtcResult hiprtcGetLoweredName(hiprtcProgram prog,
+                                  const char *name_expression,
+                                  const char **lowered_name);
 
 #ifdef __cplusplus
 }

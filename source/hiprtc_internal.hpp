@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 typedef enum hiprtc_program_state_e {
@@ -16,6 +17,8 @@ struct hiprtc_program {
   std::string source_;         // Input source
   std::vector<char> object_;   // Output code object
   std::string log_;            // Log
+  std::unordered_map<std::string,
+                     std::string> lowered_names_; // Lowered names
 };
 
 bool compile_program(hiprtc_program *prog,

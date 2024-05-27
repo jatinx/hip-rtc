@@ -128,6 +128,56 @@ std::string get_build_log(amd_comgr_data_set_t &data_set) {
   }
 }
 
+bool get_mangled_names(
+    const std::vector<char> &exe,
+    std::unordered_map<std::string, std::string> &mangled_names) {
+  amd_comgr_data_t data;
+  if (auto comgr_res =
+          amd_comgr_create_data(AMD_COMGR_DATA_KIND_EXECUTABLE, &data);
+      comgr_res != AMD_COMGR_STATUS_SUCCESS) {
+    return false;
+  }
+
+  if (auto comgr_res = amd_comgr_set_data(data, exe.size(), exe.data());
+      comgr_res != AMD_COMGR_STATUS_SUCCESS) {
+    (void)amd_comgr_release_data(data);
+    return false;
+  }
+
+  size_t name_count;
+  if (auto comgr_res =
+          amd_comgr_populate_name_expression_map(data, &name_count);
+      comgr_res != AMD_COMGR_STATUS_SUCCESS) {
+    (void)amd_comgr_release_data(data);
+    return false;
+  }
+
+  for (auto &name_pair : mangled_names) {
+    size_t name_size = 0;
+    char *name_ptr = const_cast<char *>(name_pair.first.data());
+
+    if (auto comgr_res = amd_comgr_map_name_expression_to_symbol_name(
+            data, &name_size, name_ptr, NULL);
+        comgr_res != AMD_COMGR_STATUS_SUCCESS) {
+      (void)amd_comgr_release_data(data);
+      return false;
+    }
+
+    std::string name(name_size, 0);
+    if (auto comgr_res = amd_comgr_map_name_expression_to_symbol_name(
+            data, &name_size, name_ptr, const_cast<char *>(name.data()));
+        comgr_res != AMD_COMGR_STATUS_SUCCESS) {
+      (void)amd_comgr_release_data(data);
+      return false;
+    }
+    name_pair.second = name;
+  }
+
+  // Release data
+  (void)amd_comgr_release_data(data);
+  return true;
+}
+
 // Big func, might refactor later
 bool compile_program(hiprtc_program *prog,
                      const std::vector<std::string> &options) {
@@ -286,6 +336,17 @@ bool compile_program(hiprtc_program *prog,
     (void)amd_comgr_destroy_data_set(exe);
     (void)amd_comgr_release_data(binary);
     return false;
+  }
+
+  // Fill up mangled names
+  if (prog->lowered_names_.size() > 0) {
+    if (!get_mangled_names(prog->object_, prog->lowered_names_)) {
+      (void)amd_comgr_destroy_data_set(data_set);
+      (void)amd_comgr_destroy_data_set(reloc);
+      (void)amd_comgr_destroy_data_set(exe);
+      (void)amd_comgr_release_data(binary);
+      return false;
+    }
   }
 
   (void)amd_comgr_release_data(binary);
