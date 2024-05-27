@@ -39,8 +39,12 @@ hiprtcResult hiprtcVersion(int *major, int *minor) {
     return HIPRTC_ERROR_INVALID_INPUT;
   }
 
-  *major = 0;
-  *minor = 1;
+#if defined(HIPRTC_MAJOR_VERSION) and defined(HIPRTC_MINOR_VERSION)
+  *major = HIPRTC_MAJOR_VERSION;
+  *minor = HIPRTC_MINOR_VERSION;
+#else
+  *major = *minor = 0;
+#endif
 
   return HIPRTC_SUCCESS;
 }

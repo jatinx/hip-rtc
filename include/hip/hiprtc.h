@@ -136,11 +136,11 @@ hiprtcResult hiprtcAddNameExpression(hiprtcProgram prog,
 
 /**
  * @brief Get lowered name of expression
- * 
- * @param prog 
- * @param name_expression 
- * @param lowered_name 
- * @return hiprtcResult 
+ *
+ * @param prog
+ * @param name_expression
+ * @param lowered_name
+ * @return hiprtcResult
  */
 hiprtcResult hiprtcGetLoweredName(hiprtcProgram prog,
                                   const char *name_expression,
