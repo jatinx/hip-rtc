@@ -15,12 +15,11 @@
   }
 
 int main() {
-  std::string source =
-      "template<typename T> __global__ void kernel(T *a) { *a = 10; }";
+  std::string source = "__global__ void kernel(int *a) { *a = 10; }";
   hiprtcProgram prog;
   hiprtc_check(
       hiprtcCreateProgram(&prog, source.c_str(), nullptr, 0, nullptr, nullptr));
-  const char *kernel_name = "kernel<int>";
+  const char *kernel_name = "kernel";
   hiprtc_check(hiprtcAddNameExpression(prog, kernel_name));
   hiprtc_check(hiprtcCompileProgram(prog, 0, nullptr));
 
