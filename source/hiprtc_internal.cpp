@@ -9,6 +9,49 @@ const char hiprtc_internal_header[] = {
 #include "hiprtc_header_defs.h"
 };
 
+/**
+ * @brief Create a data object which holds source for comgr
+ *
+ * @param data reference of data to be created
+ * @param kind Kind of data
+ * @param src Source to be input
+ * @param src_len Length of src
+ * @param name Name
+ * @return true Success
+ * @return false Failed
+ */
+bool create_data(amd_comgr_data_t &data, amd_comgr_data_kind_t kind,
+                 const char *src, size_t src_len, const char *name) {
+  if (auto comgr_res = amd_comgr_create_data(kind, &data);
+      comgr_res != AMD_COMGR_STATUS_SUCCESS) {
+    return false;
+  }
+
+  // Add source
+  if (auto comgr_res = amd_comgr_set_data(data, src_len, src);
+      comgr_res != AMD_COMGR_STATUS_SUCCESS) {
+    (void)amd_comgr_release_data(data);
+    return false;
+  }
+
+  // Set name
+  if (auto comgr_res = amd_comgr_set_data_name(data, name);
+      comgr_res != AMD_COMGR_STATUS_SUCCESS) {
+    (void)amd_comgr_release_data(data);
+    return false;
+  }
+  return true;
+}
+
+/**
+ * @brief Create a action object for comgr
+ *
+ * @param action reference to action object to be populated
+ * @param isa_name isa name in amdgcn-amd-amdhsa--gfxnnn:features
+ * @param options compiler options to be passed
+ * @return true
+ * @return false
+ */
 bool create_action(amd_comgr_action_info_t &action, const std::string &isa_name,
                    const std::vector<std::string> &options) {
   if (auto comgr_res = amd_comgr_create_action_info(&action);
@@ -88,6 +131,9 @@ std::string get_build_log(amd_comgr_data_set_t &data_set) {
 // Big func, might refactor later
 bool compile_program(hiprtc_program *prog,
                      const std::vector<std::string> &options) {
+  // clear the existing log
+  prog->log_.clear();
+
   // Create comgr dataset, a superset of all compilation inputs
   amd_comgr_data_set_t data_set;
   if (auto comgr_res = amd_comgr_create_data_set(&data_set);
@@ -95,28 +141,11 @@ bool compile_program(hiprtc_program *prog,
     return false;
   }
 
-  // Create data
+  // Create data for source
   amd_comgr_data_t data;
-  if (auto comgr_res = amd_comgr_create_data(AMD_COMGR_DATA_KIND_SOURCE, &data);
-      comgr_res != AMD_COMGR_STATUS_SUCCESS) {
+  if (!create_data(data, AMD_COMGR_DATA_KIND_SOURCE, prog->source_.data(),
+                   prog->source_.size(), prog->name_.c_str())) {
     (void)amd_comgr_destroy_data_set(data_set);
-    return false;
-  }
-
-  // Add source
-  if (auto comgr_res =
-          amd_comgr_set_data(data, prog->source_.size(), prog->source_.data());
-      comgr_res != AMD_COMGR_STATUS_SUCCESS) {
-    (void)amd_comgr_destroy_data_set(data_set);
-    (void)amd_comgr_release_data(data);
-    return false;
-  }
-
-  // Set name
-  if (auto comgr_res = amd_comgr_set_data_name(data, prog->name_.c_str());
-      comgr_res != AMD_COMGR_STATUS_SUCCESS) {
-    (void)amd_comgr_destroy_data_set(data_set);
-    (void)amd_comgr_release_data(data);
     return false;
   }
 
@@ -128,37 +157,19 @@ bool compile_program(hiprtc_program *prog,
     return false;
   }
 
-  // TODO: maybe release data here
+  // release data here
   (void)amd_comgr_release_data(data);
 
   // Add internal header
   amd_comgr_data_t include_data;
-  if (auto comgr_res =
-          amd_comgr_create_data(AMD_COMGR_DATA_KIND_INCLUDE, &include_data);
-      comgr_res != AMD_COMGR_STATUS_SUCCESS) {
+  if (!create_data(include_data, AMD_COMGR_DATA_KIND_INCLUDE,
+                   hiprtc_internal_header, sizeof(hiprtc_internal_header),
+                   "hiprtc_internal_header.h")) {
     (void)amd_comgr_destroy_data_set(data_set);
     return false;
   }
 
-  // Add source
-  if (auto comgr_res = amd_comgr_set_data(
-          include_data, sizeof(hiprtc_internal_header), hiprtc_internal_header);
-      comgr_res != AMD_COMGR_STATUS_SUCCESS) {
-    (void)amd_comgr_destroy_data_set(data_set);
-    (void)amd_comgr_release_data(include_data);
-    return false;
-  }
-
-  // Set name
-  if (auto comgr_res =
-          amd_comgr_set_data_name(include_data, "hiprtc_internal_header.h");
-      comgr_res != AMD_COMGR_STATUS_SUCCESS) {
-    (void)amd_comgr_destroy_data_set(data_set);
-    (void)amd_comgr_release_data(include_data);
-    return false;
-  }
-
-  // Add data to dataset
+  // Add include header to dataset
   if (auto comgr_res = amd_comgr_data_set_add(data_set, include_data);
       comgr_res != AMD_COMGR_STATUS_SUCCESS) {
     (void)amd_comgr_destroy_data_set(data_set);
@@ -193,6 +204,7 @@ bool compile_program(hiprtc_program *prog,
           amd_comgr_do_action(AMD_COMGR_ACTION_COMPILE_SOURCE_TO_RELOCATABLE,
                               action, data_set, reloc);
       comgr_res != AMD_COMGR_STATUS_SUCCESS) {
+    prog->log_ += "Error in compilation to relocatable:";
     prog->log_ += get_build_log(reloc);
     (void)amd_comgr_destroy_data_set(data_set);
     (void)amd_comgr_destroy_action_info(action);
@@ -226,6 +238,7 @@ bool compile_program(hiprtc_program *prog,
   if (auto comgr_res = amd_comgr_do_action(
           AMD_COMGR_ACTION_LINK_RELOCATABLE_TO_EXECUTABLE, action, reloc, exe);
       comgr_res != AMD_COMGR_STATUS_SUCCESS) {
+    prog->log_ += "Error in compilation to exe:";
     prog->log_ += get_build_log(exe);
     (void)amd_comgr_destroy_data_set(data_set);
     (void)amd_comgr_destroy_data_set(reloc);
@@ -236,6 +249,8 @@ bool compile_program(hiprtc_program *prog,
 
   // Destroy the action
   (void)amd_comgr_destroy_action_info(action);
+
+  prog->log_ += get_build_log(exe);
 
   // Extract Binary
   amd_comgr_data_t binary;
