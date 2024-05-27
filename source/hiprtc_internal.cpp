@@ -212,9 +212,10 @@ bool compile_program(hiprtc_program *prog,
 
   // Add internal header
   amd_comgr_data_t include_data;
-  if (!create_data(include_data, AMD_COMGR_DATA_KIND_INCLUDE,
-                   hiprtc_internal_header, sizeof(hiprtc_internal_header),
-                   "hiprtc_internal_header.h")) {
+  if (!create_data(
+          include_data, AMD_COMGR_DATA_KIND_INCLUDE, hiprtc_internal_header,
+          sizeof(hiprtc_internal_header) - 1 /* -1 coz null terminated */,
+          "hiprtc_internal_header.h")) {
     (void)amd_comgr_destroy_data_set(data_set);
     return false;
   }
