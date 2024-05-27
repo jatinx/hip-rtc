@@ -57,14 +57,19 @@ hiprtcResult hiprtcCreateProgram(hiprtcProgram *prog, const char *src,
     return HIPRTC_ERROR_INVALID_INPUT;
   }
 
-  if (num_headers != 0) { // At the moment we do not support headers
-    return HIPRTC_ERROR_INVALID_INPUT;
-  }
-
   auto p = new hiprtc_program;
   p->name_ = (name != nullptr) ? name : "CompileSource";
   p->source_ = src;
   p->state_ = hiprtc_program_state::Created;
+
+  // add headers
+  for (int i = 0; i < num_headers; i++) {
+    if (headers[i] == nullptr || include_names[i] == nullptr) {
+      return HIPRTC_ERROR_INVALID_INPUT;
+    }
+    p->headers_.push_back(
+        std::make_pair(std::string(include_names[i]), std::string(headers[i])));
+  }
 
   *prog = reinterpret_cast<hiprtcProgram>(p);
 

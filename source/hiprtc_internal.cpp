@@ -231,6 +231,29 @@ bool compile_program(hiprtc_program *prog,
   // Release include header
   (void)amd_comgr_release_data(include_data);
 
+  // Add external headers provided by user
+  for (size_t i = 0; i < prog->headers_.size(); i++) {
+    amd_comgr_data_t user_header;
+    if (!create_data(user_header, AMD_COMGR_DATA_KIND_INCLUDE,
+                     prog->headers_[i].second.c_str(),
+                     prog->headers_[i].second.size(),
+                     prog->headers_[i].first.c_str())) {
+      (void)amd_comgr_destroy_data_set(data_set);
+      return false;
+    }
+
+    // Add include header to dataset
+    if (auto comgr_res = amd_comgr_data_set_add(data_set, user_header);
+        comgr_res != AMD_COMGR_STATUS_SUCCESS) {
+      (void)amd_comgr_destroy_data_set(data_set);
+      (void)amd_comgr_release_data(user_header);
+      return false;
+    }
+
+    // Release include header
+    (void)amd_comgr_release_data(user_header);
+  }
+
   // Get isa name
   auto isa_name = rsmi::get_isa_name();
 

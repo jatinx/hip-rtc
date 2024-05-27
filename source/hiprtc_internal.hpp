@@ -19,6 +19,8 @@ struct hiprtc_program {
   std::string log_;            // Log
   std::unordered_map<std::string,
                      std::string> lowered_names_; // Lowered names
+  std::vector<std::pair<std::string,
+                        std::string>> headers_; // <name, source>
 };
 
 bool compile_program(hiprtc_program *prog,
