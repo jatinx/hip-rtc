@@ -1,6 +1,6 @@
 # HIPRTC - hip runtime compiler
 
-hip-rtc is a light weight, non-hip dependent library which allows users to compiler hip-programs in code.
+hip-rtc is a light weight, lean, non-hip dependent library which allows users to compiler hip-programs in code.
 
 This is made only for AMD GPUs. Will not work with any other GPUs.
 

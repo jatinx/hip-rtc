@@ -88,10 +88,12 @@ hiprtcResult hiprtcCompileProgram(hiprtcProgram prog, int num_options,
 
   /* Append user options */
   std::vector<std::string> opts;
-  opts.reserve(num_options + 5);
+  opts.reserve(num_options + 7);
   opts.push_back("-O3");
   opts.push_back("-std=c++14");
   opts.push_back("-nogpuinc");
+  opts.push_back("-include");
+  opts.push_back("hiprtc_internal_header.h");
   opts.push_back("-Wno-gnu-line-marker");
   opts.push_back("-Wno-missing-prototypes");
 

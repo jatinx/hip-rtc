@@ -5,6 +5,10 @@
 #include "hiprtc_internal.hpp"
 #include "rocm_smi.hpp"
 
+const char hiprtc_internal_header[] = {
+#include "hiprtc_header_defs.h"
+};
+
 bool create_action(amd_comgr_action_info_t &action, const std::string &isa_name,
                    const std::vector<std::string> &options) {
   if (auto comgr_res = amd_comgr_create_action_info(&action);
@@ -84,7 +88,7 @@ std::string get_build_log(amd_comgr_data_set_t &data_set) {
 // Big func, might refactor later
 bool compile_program(hiprtc_program *prog,
                      const std::vector<std::string> &options) {
-  // Create comgr dataset
+  // Create comgr dataset, a superset of all compilation inputs
   amd_comgr_data_set_t data_set;
   if (auto comgr_res = amd_comgr_create_data_set(&data_set);
       comgr_res != AMD_COMGR_STATUS_SUCCESS) {
@@ -126,6 +130,44 @@ bool compile_program(hiprtc_program *prog,
 
   // TODO: maybe release data here
   (void)amd_comgr_release_data(data);
+
+  // Add internal header
+  amd_comgr_data_t include_data;
+  if (auto comgr_res =
+          amd_comgr_create_data(AMD_COMGR_DATA_KIND_INCLUDE, &include_data);
+      comgr_res != AMD_COMGR_STATUS_SUCCESS) {
+    (void)amd_comgr_destroy_data_set(data_set);
+    return false;
+  }
+
+  // Add source
+  if (auto comgr_res = amd_comgr_set_data(
+          include_data, sizeof(hiprtc_internal_header), hiprtc_internal_header);
+      comgr_res != AMD_COMGR_STATUS_SUCCESS) {
+    (void)amd_comgr_destroy_data_set(data_set);
+    (void)amd_comgr_release_data(include_data);
+    return false;
+  }
+
+  // Set name
+  if (auto comgr_res =
+          amd_comgr_set_data_name(include_data, "hiprtc_internal_header.h");
+      comgr_res != AMD_COMGR_STATUS_SUCCESS) {
+    (void)amd_comgr_destroy_data_set(data_set);
+    (void)amd_comgr_release_data(include_data);
+    return false;
+  }
+
+  // Add data to dataset
+  if (auto comgr_res = amd_comgr_data_set_add(data_set, include_data);
+      comgr_res != AMD_COMGR_STATUS_SUCCESS) {
+    (void)amd_comgr_destroy_data_set(data_set);
+    (void)amd_comgr_release_data(include_data);
+    return false;
+  }
+
+  // Release include header
+  (void)amd_comgr_release_data(include_data);
 
   // Get isa name
   auto isa_name = rsmi::get_isa_name();
