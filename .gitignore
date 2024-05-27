@@ -1,0 +1,9 @@
+build
+.vscode
+.cache
+release
+
+*.out
+*.exe
+*.so
+*.a
