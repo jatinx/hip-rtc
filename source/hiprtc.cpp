@@ -101,10 +101,11 @@ hiprtcResult hiprtcCompileProgram(hiprtcProgram prog, int num_options,
 
   /* Append user options */
   std::vector<std::string> opts;
-  opts.reserve(num_options + 7);
+  opts.reserve(num_options + 8);
   opts.push_back("-O3");
   opts.push_back("-std=c++17");
   opts.push_back("-nogpuinc");
+  opts.push_back("-D__HIPCC_RTC__");
   opts.push_back("-include");
   opts.push_back("hiprtc_internal_header.h");
   opts.push_back("-Wno-gnu-line-marker");
@@ -184,6 +185,9 @@ hiprtcResult hiprtcAddNameExpression(hiprtcProgram prog,
   }
 
   auto p = reinterpret_cast<hiprtc_program *>(prog);
+  if(p == nullptr) {
+    return HIPRTC_ERROR_NAME_EXPRESSION_NOT_VALID;
+  }
   if (p->state_ != hiprtc_program_state::Created) {
     return HIPRTC_ERROR_INVALID_INPUT;
   }

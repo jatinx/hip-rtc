@@ -1,6 +1,5 @@
 R"(
-#define __global__ __attribute__((global))
-#define __device__ __attribute__((device))
-#define __shared__ __attribute__((shared))
-#define __constant__ __attribute__((constant))
+typedef unsigned long size_t;
+
+#include <hip/hip_runtime.h>
 )"
