@@ -7,3 +7,5 @@ release
 *.exe
 *.so
 *.a
+
+include/hiprtc_internal_header_generated.hpp
